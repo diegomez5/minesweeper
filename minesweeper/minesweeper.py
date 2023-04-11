@@ -7,21 +7,39 @@ TILE_SIZE = 30
 BANNER_SIZE = 2.5 * TILE_SIZE
 game_completed = False
 
-def main():
+COLORS = {
+    1: '#0000ff',
+    2: '#00FF00',
+    3: '#FF0000',
+    4: '#00008b',
+    5: '#8b0000',
+    6: '#14A3C7',
+    7: '#000000',
+    8: '#808080'
+}
+
+DIFFICULTIES = {
+    'Easy': [10, 8, 10],
+    'Medium': [18, 14, 40],
+    'Hard': [24, 20, 99]
+}
+
+def main(settings):
+    global game_completed
+    game_completed = False
+
     pygame.init()
     pygame.display.set_caption('Minesweeper')
 
     before_time = round(datetime.today().timestamp())
-    num_mines = 40
-    x_len = 18
-    y_len = 14
-    # deiafsbffbefbuofffffffffffffffff I CHANGEd TYHIS
-    board = ''
 
+    x_len, y_len, num_mines = [settings[i] for i in range(len(settings))]
+    board = ''
     perimeter = calculate_perimeter(x_len, y_len)
     screen = pygame.display.set_mode((perimeter[0], perimeter[1]))
 
-    font = pygame.font.SysFont("monospace", round(BANNER_SIZE / 2))
+    font_size = round(BANNER_SIZE / 3) if x_len == 10 else round(BANNER_SIZE / 2)
+    font = pygame.font.SysFont("monospace", font_size)
    
     tiles = []
     subset_tiles = []
@@ -37,19 +55,33 @@ def main():
         subset_tiles.append(Tile(set[0], set[1], TILE_SIZE, TILE_SIZE, square_color, screen, x_len, y_len, num_mines))
     tiles.append(subset_tiles)
 
+    difficulty_buttons = []
+    for i, difficulty in enumerate(DIFFICULTIES.keys()):
+        size = (BANNER_SIZE / 2)
+        
+        x_pos = (x_len / 15) * (size * i) #+ (x_len / 5))
+        y_pos = BANNER_SIZE / 4
+        difficulty_buttons.append(Difficulty_Button(screen, x_pos, y_pos, size, difficulty))
+
+
     while True:
         event = pygame.event.poll() 
         if event.type == pygame.QUIT:
-            pygame.quit()              
+            pygame.quit()
+            return False
 
         screen.fill('#4EA3B7')
 
         mouse_state = pygame.mouse.get_pressed(num_buttons=3)
         for y, row in enumerate(tiles):
             for x, tile in enumerate(row):
+                if not tile.board: 
+                    tile.board = board
                 tile.render()
-                if board == '' and tile.board:
+
+                if board == '' and tile.board: 
                     board = tile.board
+
                 tile.render_event()
                 if tile.chorded:
                     chordable = chord(tiles, board, [x, y])
@@ -79,15 +111,52 @@ def main():
                         tiles[num[1]][num[0]].color = ['#808080', '#BEBEBE'] if tiles[num[1]][num[0]].dark else ['#949494', '#BEBEBE']
                     tile.nearby = False
 
+        # render difficulty buttons
+        for button in difficulty_buttons:
+            button.render()
+            if button.clicked:
+                return DIFFICULTIES[button.difficulty]
+
 
         if not game_completed:
             if not (game_finished(tiles, num_mines)):
                 flags = num_flagged(tiles, num_mines)
                 flag_label = font.render(f"flags: {flags} time: {round(datetime.today().timestamp()) - before_time}", 0.1, '#000000')
-        screen.blit(flag_label, (0, BANNER_SIZE / 4))
+        screen.blit(flag_label, ((x_len / 10) * ((BANNER_SIZE) + (x_len / 2)), BANNER_SIZE / 4))
         
 
         pygame.display.flip()
+
+class Difficulty_Button():
+    def __init__(self, screen, x, y, size, difficulty):
+        self.screen = screen
+
+        self.x = x
+        self.y = y
+        self.size = size
+        self.difficulty = difficulty
+
+        self.clicked = False
+
+        self.surface = pygame.Surface((size, size))
+        self.hitbox = pygame.Rect(x, y, size, size)
+        self.color = '#808080'
+
+        font = pygame.font.SysFont("monospace", round(size))
+        self.label = font.render(f"{difficulty[0]}", 0.1, '#000000')
+
+    def render(self):
+        if self.hitbox.collidepoint(pygame.mouse.get_pos()):
+            self.color = '#BEBEBE'
+            mouse_state = pygame.mouse.get_pressed(num_buttons=3)
+            if mouse_state[0]:
+                self.clicked = True
+        else: 
+            self.color = '#808080'
+        self.surface.fill(self.color)
+        self.screen.blit(self.surface, self.hitbox)
+        self.screen.blit(self.label, (self.x + self.size / 5, self.y))
+
 
 def mouse_pos(tiles):
     for y in tiles:
@@ -249,9 +318,9 @@ class Tile():
             else:
                 self.screen.blit(self.flag_image, (self.x, self.y))
         if self.mined:
-            space = str(self.board[int((self.y - BANNER_SIZE) / TILE_SIZE)][int(self.x / TILE_SIZE)])
-            font = pygame.font.SysFont("monospace", TILE_SIZE)
-            label = font.render(f"{space}", 0.1, '#000000')
+            space = self.board[int((self.y - BANNER_SIZE) / TILE_SIZE)][int(self.x / TILE_SIZE)]
+            font = pygame.font.SysFont("monospace", TILE_SIZE, True)
+            label = font.render(f"{space}", 0.1, COLORS[space])
             self.screen.blit(label, (self.x + TILE_SIZE / 5, self.y))
 
 
@@ -260,8 +329,9 @@ def make_board(x, y, mines, exclude):
     board = random.sample(['m' if i < mines else 0 for i in range(x * y)], x * y)
     board = [board[slice((j * x), (j * x) + x)] for j in range(y)]
 
+    clicked_square = exclude
     exclude = valid_surrounding(board, exclude)
-    print(exclude)
+    exclude.append(clicked_square)
     for pair in exclude:
         if board[pair[1]][pair[0]] == 'm':
             board[pair[1]][pair[0]] = 0
@@ -345,7 +415,12 @@ def nearby_empty(board, tile):
         'nums': nearby_nums
     }
 
-if __name__ == '__main__':
-    main()
 
-#TODO:  move mine to top left if beginnning // add color to numbers // fix cohorfin highlight
+if __name__ == '__main__':
+    settings = [18, 14, 40]
+    while True:
+        settings = main(settings)
+        if not settings: 
+            break
+
+#TODO: fix cohorfin highlight , change text size on banner
