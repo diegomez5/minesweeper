@@ -58,7 +58,6 @@ def main(settings):
     difficulty_buttons = []
     for i, difficulty in enumerate(DIFFICULTIES.keys()):
         size = (BANNER_SIZE / 2)
-        
         x_pos = (x_len / 15) * (size * i)
         y_pos = BANNER_SIZE / 4
         difficulty_buttons.append(Difficulty_Button(screen, x_pos, y_pos, size, difficulty))
