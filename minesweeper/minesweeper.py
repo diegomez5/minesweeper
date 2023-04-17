@@ -1,7 +1,7 @@
 import random
 import pygame
 from datetime import datetime
-#
+
 
 TILE_SIZE = 30
 BANNER_SIZE = 2.5 * TILE_SIZE
@@ -58,7 +58,7 @@ def main(settings):
     difficulty_buttons = []
     for i, difficulty in enumerate(DIFFICULTIES.keys()):
         size = (BANNER_SIZE / 2)
-        x_pos = (x_len / 15) * (size * i)
+        x_pos = (x_len / 10) * (size * i)
         y_pos = BANNER_SIZE / 4
         difficulty_buttons.append(Difficulty_Button(screen, x_pos, y_pos, size, difficulty))
 
@@ -120,10 +120,14 @@ def main(settings):
         if not game_completed:
             if not (game_finished(tiles, num_mines)):
                 flags = num_flagged(tiles, num_mines)
-                flag_label = font.render(f"flags: {flags} time: {round(datetime.today().timestamp()) - before_time}", 0.1, '#000000')
-        screen.blit(flag_label, ((x_len / 10) * ((BANNER_SIZE) + (x_len / 2)), BANNER_SIZE / 4))
-        
-
+                if x_len <= 10:
+                    flag_label = [font.render(f'flags:{flags}', 0.1, '#000000')]
+                    flag_label.append(font.render(f'time:{round(datetime.today().timestamp()) - before_time}', 0.1, '#000000'))
+                else:
+                    flag_label = [font.render(f"flags:{flags} time:{round(datetime.today().timestamp()) - before_time}", 0.1, '#000000')]
+        for i, label in enumerate(flag_label):
+            if x_len <= 10: screen.blit(label, ((x_len / 7) * (BANNER_SIZE) + font_size, BANNER_SIZE / 4 + (i * font_size)))
+            else: screen.blit(label, ((x_len / 7) * (BANNER_SIZE), BANNER_SIZE / 4 + (i * font_size)))
         pygame.display.flip()
 
 class Difficulty_Button():
@@ -323,7 +327,6 @@ class Tile():
             self.screen.blit(label, (self.x + TILE_SIZE / 5, self.y))
 
 
-#14 18 standard size
 def make_board(x, y, mines, exclude):
     board = random.sample(['m' if i < mines else 0 for i in range(x * y)], x * y)
     board = [board[slice((j * x), (j * x) + x)] for j in range(y)]
@@ -345,70 +348,35 @@ def make_completed_board(board):
     for y, row in enumerate(board):
         for x, space in enumerate(row):
             if (space != 'm'): continue
-            # top
-            if (y - 1 >= 0): 
-                for i in [x - 1, x, x + 1]:
-                    if -1 < i < len(row) and board[y - 1][i] != 'm':
-                        board[y - 1][i] += 1
-            # sides
-            for i in [x - 1, x + 1]:
-                if -1 < i < len(row) and board[y][i] != 'm':
-                    board[y][i] += 1
-            # bottom
-            if (y + 1 < len(board)): 
-                for i in [x - 1, x, x + 1]:
-                    if -1 < i < len(row) and board[y + 1][i] != 'm':
-                        board[y + 1][i] += 1
+            surrounding = valid_surrounding(board, [x, y])
+            for tile in surrounding:
+                if board[tile[1]][tile[0]] == 'm': continue
+                board[tile[1]][tile[0]] += 1
     return board
 
-# i know this is inefficient
+
 def nearby_empty(board, tile):
     empty_tiles = [tile]
     run = True
     while run:
         length = len(empty_tiles)
         for empty in empty_tiles:
-            if (empty[1] - 1 >= 0): 
-                for i in [empty[0] - 1, empty[0], empty[0] + 1]:
-                    if -1 < i < len(board[0]) and board[empty[1] - 1][i] == 0:
-                        if [i, empty[1] - 1] not in empty_tiles:
-                            empty_tiles.append([i, empty[1] - 1])
+            surrounding = valid_surrounding(board, empty)
+            for space in surrounding:
+                if board[space[1]][space[0]] != 0: continue
+                if space in empty_tiles: continue
+                empty_tiles.append(space)
 
-            for i in [empty[0] - 1, empty[0] + 1]:
-                if -1 < i < len(board[0]) and board[empty[1]][i] == 0:
-                    if [i, empty[1]] not in empty_tiles:
-                        empty_tiles.append([i, empty[1]])
-
-            if (empty[1] + 1 < len(board)): 
-                for i in [empty[0] - 1, empty[0], empty[0] + 1]:
-                    if -1 < i < len(board[0]) and board[empty[1] + 1][i] == 0:
-                        if [i, empty[1] + 1] not in empty_tiles:
-                            empty_tiles.append([i, empty[1] + 1])
         if length == len(empty_tiles): 
             run = False
     # make this more efficient
     nearby_nums = []
-    for y, row in enumerate(board):
-        for x, space in enumerate(row):
-            if (space == 0): continue
-            # top
-            if (y - 1 >= 0): 
-                for i in [x - 1, x, x + 1]:
-                    if -1 < i < len(row) and [i, y - 1] in empty_tiles:
-                        if [x, y] not in nearby_nums:
-                            nearby_nums.append([x, y])
-            # sides
-            for i in [x - 1, x + 1]:
-                if -1 < i < len(row) and [i, y] in empty_tiles:
-                    if [x, y] not in nearby_nums:
-                        nearby_nums.append([x, y])
-            # bottom
-            if (y + 1 < len(board)): 
-                for i in [x - 1, x, x + 1]:
-                    if -1 < i < len(row) and [i, y + 1] in empty_tiles:
-                        if [x, y] not in nearby_nums:
-                            nearby_nums.append([x, y])
-            pass
+    for space in empty_tiles:
+        surrounding = valid_surrounding(board, space)
+        for coordinate in surrounding:
+            if coordinate in nearby_nums or coordinate in empty_tiles: continue
+            nearby_nums.append(coordinate)
+
     return {
         'empty': empty_tiles,
         'nums': nearby_nums
@@ -422,4 +390,4 @@ if __name__ == '__main__':
         if not settings: 
             break
 
-#TODO: fix cohorfin highlight , change text size on banner
+#TODO: 
