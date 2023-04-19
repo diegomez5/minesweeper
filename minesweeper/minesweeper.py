@@ -2,7 +2,6 @@ import random
 import pygame
 from datetime import datetime
 
-
 TILE_SIZE = 30
 BANNER_SIZE = 2.5 * TILE_SIZE
 game_completed = False
@@ -25,7 +24,7 @@ DIFFICULTIES = {
 }
 
 
-class Tile():
+class Tile:
     def __init__(self, x, y, width, height, dark, screen, x_len, y_len, num_mines):
         self.x = x
         self.y = y
@@ -59,7 +58,7 @@ class Tile():
         global game_completed
 
         self.surface.fill(self.color[0])
-        
+
         if game_completed:
             self.flagged = False
             if self.board[int((self.y - BANNER_SIZE) / TILE_SIZE)][int(self.x / TILE_SIZE)] == 'm':
@@ -67,7 +66,7 @@ class Tile():
                 self.screen.blit(self.surface, self.hitbox)
                 self.screen.blit(self.bomb_image, (self.x, self.y))
                 return
-            
+
         if self.chorded == 'highlight':
             self.surface.fill(self.color[1])
         if self.hitbox.collidepoint(pygame.mouse.get_pos()):
@@ -79,7 +78,7 @@ class Tile():
                     self.clicked = True
                     event = 'mine' if mouse_state[0] else 'flag' if mouse_state[2] else 'chord'
                     self.handler(event)
-            else: 
+            else:
                 self.clicked = False
         self.screen.blit(self.surface, self.hitbox)
 
@@ -120,7 +119,7 @@ class Tile():
             self.screen.blit(label, (self.x + TILE_SIZE / 5, self.y))
 
 
-class Difficulty_Button():
+class DifficultyButton:
     def __init__(self, screen, x, y, size, difficulty):
         self.screen = screen
 
@@ -144,7 +143,7 @@ class Difficulty_Button():
             mouse_state = pygame.mouse.get_pressed(num_buttons=3)
             if mouse_state[0]:
                 self.clicked = True
-        else: 
+        else:
             self.color = '#808080'
         self.surface.fill(self.color)
         self.screen.blit(self.surface, self.hitbox)
@@ -167,19 +166,29 @@ def main(settings):
 
     font_size = round(BANNER_SIZE / 3) if x_len == 10 else round(BANNER_SIZE / 2)
     font = pygame.font.SysFont("monospace", font_size)
-   
+
     tiles = []
     subset_tiles = []
     square_color = False
     data = calculate_coordinates(x_len, y_len)
-    for i, set in enumerate(data):
+    for i, coordinate in enumerate(data):
         if i % x_len == 0 and i != 0:
             tiles.append(subset_tiles)
             subset_tiles = []
-            if x_len % 2 == 0: 
+            if x_len % 2 == 0:
                 square_color = not square_color
         square_color = not square_color
-        subset_tiles.append(Tile(set[0], set[1], TILE_SIZE, TILE_SIZE, square_color, screen, x_len, y_len, num_mines))
+        subset_tiles.append(Tile(
+            coordinate[0], 
+            coordinate[1], 
+            TILE_SIZE, 
+            TILE_SIZE, 
+            square_color, 
+            screen, 
+            x_len, 
+            y_len, 
+            num_mines
+        ))
     tiles.append(subset_tiles)
 
     difficulty_buttons = []
@@ -187,11 +196,10 @@ def main(settings):
         size = (BANNER_SIZE / 2)
         x_pos = (x_len / 10) * (size * i)
         y_pos = BANNER_SIZE / 4
-        difficulty_buttons.append(Difficulty_Button(screen, x_pos, y_pos, size, difficulty))
-
+        difficulty_buttons.append(DifficultyButton(screen, x_pos, y_pos, size, difficulty))
 
     while True:
-        event = pygame.event.poll() 
+        event = pygame.event.poll()
         if event.type == pygame.QUIT:
             pygame.quit()
             return False
@@ -201,11 +209,11 @@ def main(settings):
         mouse_state = pygame.mouse.get_pressed(num_buttons=3)
         for y, row in enumerate(tiles):
             for x, tile in enumerate(row):
-                if not tile.board: 
+                if not tile.board:
                     tile.board = board
                 tile.render()
 
-                if board == '' and tile.board: 
+                if board == '' and tile.board:
                     board = tile.board
 
                 tile.render_event()
@@ -217,13 +225,14 @@ def main(settings):
                                 tile.nearby = nearby_empty(board, coordinate)
                             else:
                                 tiles[coordinate[1]][coordinate[0]].mined = True
-                                tiles[coordinate[1]][coordinate[0]].color = ['#808080', '#BEBEBE'] if tiles[coordinate[1]][coordinate[0]].dark else ['#949494', '#BEBEBE']
+                                tiles[coordinate[1]][coordinate[0]].color = ['#808080', '#BEBEBE'] if \
+                                    tiles[coordinate[1]][coordinate[0]].dark else ['#949494', '#BEBEBE']
                         tile.chorded = False
-                    else: 
+                    else:
                         if mouse_state[1]:
                             for coordinate in chordable['tiles']:
-                               tiles[coordinate[1]][coordinate[0]].chorded = False
-                            chordable = chord(tiles, board, mouse_pos(tiles)) 
+                                tiles[coordinate[1]][coordinate[0]].chorded = False
+                            chordable = chord(tiles, board, mouse_pos(tiles))
                             for coordinate in chordable['tiles']:
                                 tiles[coordinate[1]][coordinate[0]].chorded = 'highlight'
                         else:
@@ -231,10 +240,12 @@ def main(settings):
 
                 if tile.nearby:
                     for near in tile.nearby['empty']:
-                        tiles[near[1]][near[0]].color = ['#808080', '#BEBEBE'] if tiles[near[1]][near[0]].dark else ['#949494', '#BEBEBE']
+                        tiles[near[1]][near[0]].color = ['#808080', '#BEBEBE'] if tiles[near[1]][near[0]].dark else [
+                            '#949494', '#BEBEBE']
                     for num in tile.nearby['nums']:
                         tiles[num[1]][num[0]].mined = True
-                        tiles[num[1]][num[0]].color = ['#808080', '#BEBEBE'] if tiles[num[1]][num[0]].dark else ['#949494', '#BEBEBE']
+                        tiles[num[1]][num[0]].color = ['#808080', '#BEBEBE'] if tiles[num[1]][num[0]].dark else [
+                            '#949494', '#BEBEBE']
                     tile.nearby = False
 
         # render difficulty buttons
@@ -243,18 +254,23 @@ def main(settings):
             if button.clicked:
                 return DIFFICULTIES[button.difficulty]
 
-
         if not game_completed:
             if not (game_finished(tiles, num_mines)):
                 flags = num_flagged(tiles, num_mines)
                 if x_len <= 10:
-                    flag_label = [font.render(f'flags:{flags}', 0.1, '#000000')]
-                    flag_label.append(font.render(f'time:{round(datetime.today().timestamp()) - before_time}', 0.1, '#000000'))
+                    flag_label = [font.render(f'flags:{flags}', 0.1, '#000000'),
+                                  font.render(f'time:{round(datetime.today().timestamp()) - before_time}', 0.1,
+                                              '#000000')
+                                  ]
                 else:
-                    flag_label = [font.render(f"flags:{flags} time:{round(datetime.today().timestamp()) - before_time}", 0.1, '#000000')]
+                    flag_label = [
+                        font.render(f"flags:{flags} time:{round(datetime.today().timestamp()) - before_time}", 0.1,
+                                    '#000000')]
         for i, label in enumerate(flag_label):
-            if x_len <= 10: screen.blit(label, ((x_len / 7) * (BANNER_SIZE) + font_size, BANNER_SIZE / 4 + (i * font_size)))
-            else: screen.blit(label, ((x_len / 7) * (BANNER_SIZE), BANNER_SIZE / 4 + (i * font_size)))
+            if x_len <= 10:
+                screen.blit(label, ((x_len / 7) * BANNER_SIZE + font_size, BANNER_SIZE / 4 + (i * font_size)))
+            else:
+                screen.blit(label, ((x_len / 8) * BANNER_SIZE, BANNER_SIZE / 4 + (i * font_size)))
         pygame.display.flip()
 
 
@@ -278,10 +294,12 @@ def make_board(x, y, mines, exclude):
 def make_completed_board(board):
     for y, row in enumerate(board):
         for x, space in enumerate(row):
-            if (space != 'm'): continue
+            if space != 'm': 
+                continue
             surrounding = valid_surrounding(board, [x, y])
             for tile in surrounding:
-                if board[tile[1]][tile[0]] == 'm': continue
+                if board[tile[1]][tile[0]] == 'm': 
+                    continue
                 board[tile[1]][tile[0]] += 1
     return board
 
@@ -312,8 +330,10 @@ def chord(tiles, board, tile):
     global game_completed
     can_chord = False
     tile_num = board[tile[1]][tile[0]]
-    if tile_num == 'm' or tile_num == 0: return {'tiles': [], 'can_chord': False}
-    if tiles[tile[1]][tile[0]].color[1] == '#bbe8eb': return {'tiles': [], 'can_chord': False}
+    if tile_num == 'm' or tile_num == 0: 
+        return {'tiles': [], 'can_chord': False}
+    if tiles[tile[1]][tile[0]].color[1] == '#bbe8eb': 
+        return {'tiles': [], 'can_chord': False}
 
     valid = valid_surrounding(board, tile)
     for coordinate in valid:
@@ -325,12 +345,15 @@ def chord(tiles, board, tile):
 
     if tile_num == 0:
         can_chord = True
-    
+
     chordable = []
     for coordinate in valid:
-        if tiles[coordinate[1]][coordinate[0]].color[1] == '#BEBEBE': continue
-        if tiles[coordinate[1]][coordinate[0]].flagged and not can_chord: continue
-        if board[coordinate[1]][coordinate[0]] == 'm' and can_chord: continue
+        if tiles[coordinate[1]][coordinate[0]].color[1] == '#BEBEBE': 
+            continue
+        if tiles[coordinate[1]][coordinate[0]].flagged and not can_chord: 
+            continue
+        if board[coordinate[1]][coordinate[0]] == 'm' and can_chord: 
+            continue
         chordable.append(coordinate)
     return {'tiles': chordable, 'can_chord': can_chord}
 
@@ -343,17 +366,20 @@ def nearby_empty(board, tile):
         for empty in empty_tiles:
             surrounding = valid_surrounding(board, empty)
             for space in surrounding:
-                if board[space[1]][space[0]] != 0: continue
-                if space in empty_tiles: continue
+                if board[space[1]][space[0]] != 0: 
+                    continue
+                if space in empty_tiles: 
+                    continue
                 empty_tiles.append(space)
 
-        if length == len(empty_tiles): 
+        if length == len(empty_tiles):
             run = False
     nearby_nums = []
     for space in empty_tiles:
         surrounding = valid_surrounding(board, space)
         for coordinate in surrounding:
-            if coordinate in nearby_nums or coordinate in empty_tiles: continue
+            if coordinate in nearby_nums or coordinate in empty_tiles: 
+                continue
             nearby_nums.append(coordinate)
 
     return {
@@ -387,12 +413,9 @@ def game_finished(tiles, num_mines):
     return num_mines == left
 
 
-
 if __name__ == '__main__':
     settings = [18, 14, 40]
     while True:
         settings = main(settings)
-        if not settings: 
+        if not settings:
             break
-
-# TODO: pep8
